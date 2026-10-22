@@ -1,7 +1,7 @@
 # AI Generation Prompts (Prompt.md)
 
 **Course Policy Compliance:** Level 1 (AI usage permitted with full disclosure of tools, prompts, raw outputs, and engineering modifications).  
-**AI Tool Used:** Google Gemini 3.8 Flash (High effort reasoning) / Claude 3.5 Sonnet  
+**AI Tool Used:** Google Gemini 3.8 Flash (High effort reasoning)
 **Target Specification:** Toolshop E-Commerce Application (`https://practicesoftwaretesting.com/`)  
 
 ---

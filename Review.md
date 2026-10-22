@@ -7,7 +7,7 @@
 
 ## 1. Initial AI Generation Overview
 
-The AI model (Gemini 3.8 Flash / Claude 3.5 Sonnet) produced an initial architectural draft featuring:
+The AI model (Gemini 3.8 Flash) produced an initial architectural draft featuring:
 * Proper folder structure (`pages/`, `tests/`, `fixtures/`, `data/`).
 * Standard Page Object classes and basic TypeScript interfaces.
 * A basic fixture setup extending Playwright's `test`.
