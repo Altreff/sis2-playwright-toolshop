@@ -1,71 +1,54 @@
-# AI Generation Prompts (Prompt.md)
+# My AI Prompts Log (Prompt.md)
 
-**Course Policy Compliance:** Level 1 (AI usage permitted with full disclosure of tools, prompts, raw outputs, and engineering modifications).  
-**AI Tool Used:** Google Gemini 3.8 Flash (High effort reasoning)
-**Target Specification:** Toolshop E-Commerce Application (`https://practicesoftwaretesting.com/`)  
+**Student Assignment:** SIS 2 — Test Automation with Playwright  
+**Course:** Software Testing and Debugging · KBTU 2026  
+**AI Tool Used:** Gemini 3.8 Flash  
 
----
-
-## 1. System & Architecture Generation Prompt
-
-```text
-You are a Staff QA Automation Engineer specialized in Playwright and TypeScript.
-We are building a production-grade automated testing suite for:
-https://practicesoftwaretesting.com/ (Angular frontend over REST API).
-
-Generate the full test suite architecture according to the following strict course constraints from KBTU Software Testing & Debugging (Week 5 and Week 6):
-
-Constraints & Rules:
-1. Architectural Separation:
-   - Page Objects located in pages/ (extending a BasePage in pages/base.page.ts)
-   - Test specifications located in tests/ (one spec file per test case)
-   - Custom fixtures in fixtures/pages.fixture.ts extending Playwright's test
-   - Test data generation in data/user.factory.ts
-2. Locator Rules:
-   - Absolutely NO locators inside test spec files. Specs must only invoke Page Object methods.
-   - Use data-test attributes exclusively (configure testIdAttribute: 'data-test' in playwright.config.ts).
-   - No CSS class selectors and no positional XPath.
-3. Synchronization Rules:
-   - NO waitForTimeout() anywhere in the codebase. Use web-first assertions and locator waiting states.
-4. Test Independence & Data:
-   - Each test must be completely independent and capable of running in parallel without pre-existing state.
-   - Generate unique emails and customer details per run to avoid collision on shared environments.
-5. Five Core Test Cases to Automate (from Slide 28):
-   1. tests/register.spec.ts: Register a new customer with unique data, ending on /auth/login.
-   2. tests/login.spec.ts: Valid credentials reach /account; invalid credentials display error and stay on /auth/login.
-   3. tests/buy-product.spec.ts: Add in-stock product to cart -> verify cart item and quantity -> complete checkout wizard to order confirmation.
-   4. tests/compare-products.spec.ts: Open two catalog products, capture name and price, assert comparison.
-   5. tests/reset-password.spec.ts: Forgot password confirmation for known email, validation error for invalid email.
-
-Provide clean, modular TypeScript code with strict types.
-```
+Here are the actual prompts I used while working on this assignment. I used AI as an assistant to help scaffold the Page Objects and test structure, and then iterated on specific problems I ran into while testing the site.
 
 ---
 
-## 2. Page Object Refinement Prompt (Checkout & Error Handling)
+### Prompt 1: Initial Suite & Page Object Scaffolding
 
-```text
-Here are raw session notes from inspecting the Toolshop Angular checkout wizard:
-- The checkout page at /checkout consists of 4 wizard steps:
-  Step 1: Cart item review (data-test="product-title", "product-quantity", "product-price", "line-price", "cart-total", and "proceed-1").
-  Step 2: Sign-in / Guest check (data-test="proceed-2").
-  Step 3: Billing address form with fields: street, house_number, city, state, country, postal_code, and data-test="proceed-3". Note: proceed-3 remains disabled until all required fields including house_number are filled!
-  Step 4: Payment selection (data-test="payment-method") and finish button (data-test="finish").
-
-Refactor pages/checkout.page.ts and tests/buy-product.spec.ts so that:
-1. It automatically fills all required address fields including house_number if not already prefilled.
-2. It handles the proceed buttons sequentially with web-first synchronization.
-3. It asserts order confirmation via .alert-success without arbitrary timeouts.
-```
+> "I need to write an automated test suite for https://practicesoftwaretesting.com using Playwright with TypeScript for my university testing course.  
+> 
+> The requirements from our lecture slides are:
+> - Use Page Object Model (pages in `pages/`, specs in `tests/`, fixtures in `fixtures/`, data in `data/`).
+> - No locators inside spec files at all.
+> - Use `data-test` attributes for locators.
+> - No `waitForTimeout` anywhere, only web-first assertions.
+> - 5 test cases from Slide 28:
+>   1. Register a new customer
+>   2. Log in (valid credentials reach `/account`, invalid credentials show error)
+>   3. Buy a product (add to cart, check cart item and quantity, complete checkout)
+>   4. Compare two products (open two products, check name and price, assert comparison)
+>   5. Reset a password (success message for known email, error for unknown email)
+> 
+> Can you help me scaffold the base page, page objects, fixture, and the 5 test specs?"
 
 ---
 
-## 3. Data Isolation Prompt (Mitigating Shared Account Lockouts)
+### Prompt 2: Fixing Checkout Address Step (Button Disabled)
 
-```text
-Problem:
-When running login tests against public staging (practicesoftwaretesting.com), shared accounts like customer@practicesoftwaretesting.com frequently return HTTP 423 (Locked) due to multiple students running concurrent tests.
+> "I'm running the `buy-product.spec.ts` test, but it gets stuck on Step 3 of checkout (Billing Address).  
+> The `Proceed to checkout` button (`data-test="proceed-3"`) stays disabled, and Playwright times out waiting for it to be enabled.  
+> 
+> When I looked at the page in the browser, I noticed there's a field for `House number` (`data-test="house_number"`) that is marked required (*), but my `checkout.page.ts` only filled street, city, state, country, and postal code.  
+> 
+> How should I update `checkout.page.ts` to check if `house_number` and other inputs are filled and make sure the button gets enabled before clicking?"
 
-Task:
-Update data/user.factory.ts and tests/login.spec.ts to support dynamic user creation via direct API call (POST https://api.practicesoftwaretesting.com/users/register) before the UI login step, ensuring 100% test independence and eliminating external test flakiness.
-```
+---
+
+### Prompt 3: Handling Locked Test Accounts (HTTP 423)
+
+> "In `login.spec.ts`, I was using the seeded account `customer@practicesoftwaretesting.com` / `welcome01` from the slides. But the test fails intermittently with an error message, and when I check network calls in DevTools, the `/users/login` endpoint returns HTTP 423 (Locked) because other students are running tests at the same time and triggered rate limits.  
+> 
+> How can I make my tests completely independent? Can I make a helper function in `user.factory.ts` that registers a fresh random user via the REST API (POST `https://api.practicesoftwaretesting.com/users/register`) before the UI login test runs?"
+
+---
+
+### Prompt 4: Handling Out-of-Stock Items in Product Catalog
+
+> "In `buy-product.spec.ts`, my test tried to click the first product on the home page, but that product was 'Combination Pliers' which is currently marked 'Out of stock'. When a product is out of stock, there is no 'Add to cart' button, so the test fails.  
+> 
+> How can I update `product.page.ts` so it dynamically finds the first product card that does NOT have the `out-of-stock` badge and clicks that one instead?"

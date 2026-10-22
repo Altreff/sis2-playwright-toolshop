@@ -1,74 +1,90 @@
-# AI Generation Review & Justification (Review.md)
+# My Review and Notes on AI Output (Review.md)
 
-**Course:** Software Testing and Debugging · Week 6 (KBTU 2026)  
-**Level 1 Disclosure:** Comprehensive review of AI-generated automation code, identified shortcomings, implemented modifications, and engineering justifications.  
-
----
-
-## 1. Initial AI Generation Overview
-
-The AI model (Gemini 3.8 Flash) produced an initial architectural draft featuring:
-* Proper folder structure (`pages/`, `tests/`, `fixtures/`, `data/`).
-* Standard Page Object classes and basic TypeScript interfaces.
-* A basic fixture setup extending Playwright's `test`.
-
-However, when executed against the live application (`https://practicesoftwaretesting.com/`), several critical defects, flakiness hazards, and sprint-drift issues emerged that required thorough engineering intervention.
+**Student:** Master's Student (Software Testing and Debugging)  
+**Task:** SIS 2 — Test Automation with Playwright  
+**AI Tool Evaluated:** Gemini 3.8 Flash  
+**Course Policy:** Level 1 (AI usage disclosed with review and modifications)  
 
 ---
 
-## 2. Key Deficiencies Identified and Corrections Applied
+## 1. What the AI Gave Me Initially
 
-### Defect 1: Default Locator Attribute Mismatch (`data-testid` vs `data-test`)
-* **What AI Generated:** The model assumed Playwright's default `page.getByTestId(...)` would automatically work without modifying `playwright.config.ts`.
-* **Reality:** By default, Playwright searches for `data-testid` (with an "i"). The Toolshop application strictly uses `data-test` (without an "i"), causing immediate selector timeouts on all pages.
-* **Correction:** Explicitly configured `testIdAttribute: 'data-test'` in `playwright.config.ts` (as mandated by Slide 27: *"Elements are marked with data-test attributes — which is why the config sets testIdAttribute"*).
-* **Justification:** Avoids rewriting dozens of locators to raw CSS `[data-test="..."]`, keeping Page Objects clean and adhering to Playwright best practices.
+When I first asked Gemini 3.8 Flash to generate the project, the structure looked good on paper:
+* It created the standard folders: `pages/`, `tests/`, `fixtures/`, and `data/`.
+* It split the screens into separate Page Object classes.
+* It wrote the test specs without inline locators.
 
-### Defect 2: Password Leak Validation Rejection in Registration
-* **What AI Generated:** The factory generated generic passwords like `Password123!` or `welcome01`.
-* **Reality:** The Toolshop backend implements HaveIBeenPwned API validation. Submitting `Password123!` returned HTTP 422: *«The given password has appeared in a data leak. Please choose a different password.»*
-* **Correction:** Updated `UserFactory.createUniqueCustomer()` to generate high-entropy, breach-safe passwords (`KBTU_Masters_2026_SecPass#`).
-* **Justification:** Eliminates false registration test failures caused by backend security policies.
+However, when I actually ran `npx playwright test` against the live website (`practicesoftwaretesting.com`), **almost every test failed**. The AI generated generic code based on typical tutorials, but the real site had several specific behaviors and recent updates that the AI didn't know about.
 
-### Defect 3: New Sprint Field Missing (`house_number` in Billing Address & Registration)
-* **What AI Generated:** The model copied older registration and checkout schemas from tutorials (`street`, `city`, `state`, `country`, `postal_code`).
-* **Reality:** A recent sprint in the Angular application made `house_number` a mandatory field. Without it, registration failed, and checkout Step 3 left the `Proceed to checkout` button permanently disabled (`<button disabled data-test="proceed-3">`).
-* **Correction:** Added `houseNumber` / `data-test="house_number"` to `UserFactory`, `RegisterPage`, and `CheckoutPage`. Added automatic fallback filling in `CheckoutPage.fillAddressIfRequired()`.
-* **Justification:** Confirms the principle highlighted in Slide 27: *"Find the real names yourself with codegen or DevTools. Do not copy them from a tutorial; they change between sprints."*
-
-### Defect 4: Shared Seeded Account Lockout (HTTP 423) in Authentication Tests
-* **What AI Generated:** The login test used the hardcoded seeded credentials `customer@practicesoftwaretesting.com` / `welcome01`.
-* **Reality:** Because `practicesoftwaretesting.com` is a shared public demo app, concurrent students repeatedly failed logins, triggering a temporary account lock (HTTP 423 Locked / Invalid credentials).
-* **Correction:** Created `UserFactory.createRegisteredUserViaApi(page.request)` which registers a fresh, isolated user via REST API in under 150 ms immediately before the UI test runs.
-* **Justification:** Fulfills Slide 25 and Slide 28: *"Each test is independent and creates whatever data it needs. No test may depend on another having run first."* Guarantees 100% pass rate in CI pipelines.
-
-### Defect 5: Flaky Product Selection and Out-of-Stock Products
-* **What AI Generated:** The model hardcoded product IDs (e.g. `/product/01M5J21D5EGJHFGAKP2R2TK5Z2`) in `buy-product.spec.ts` and `compare-products.spec.ts`.
-* **Reality:** That specific product was "Combination Pliers" which was out of stock. When out of stock, the `add-to-cart` button does not exist in the DOM, causing a 15-second timeout.
-* **Correction:** Refactored `ProductPage.selectFirstInStockProduct()` to scan catalog cards dynamically and select an available in-stock item. For comparison, refactored `openProductByIndex(0)` and `openProductByIndex(1)` to dynamically select distinct products from the catalog.
-* **Justification:** Tests survive catalog updates and dynamic stock changes without maintenance overhead.
-
-### Defect 6: Elimination of Client-Side Navigation Timeouts
-* **What AI Generated:** The model used `page.waitForURL('**/account')` with default load options.
-* **Reality:** Angular is a Single Page Application (SPA). Client-side route changes (`pushState`) do not trigger standard browser `load` events, resulting in 30-second timeouts.
-* **Correction:** Used Playwright's web-first assertion `await expect(page).toHaveURL(/.*account/)` exactly as demonstrated in Week 6 Slide 22.
-* **Justification:** Web-first assertions poll the URL asynchronously and resolve immediately upon Angular route transition.
+Here is what went wrong and how I fixed it.
 
 ---
 
-## 3. Strict Rules Compliance Matrix
+## 2. Issues I Found and How I Fixed Them
 
-| Rule from Course Slides | Status | Verification in Project |
-| :--- | :---: | :--- |
-| **No `waitForTimeout()`** | **PASSED** | Zero occurrences across the entire repository. All waits use web-first assertions or locator wait states. |
-| **No locators in spec files** | **PASSED** | All 5 `.spec.ts` files interact exclusively through Page Object methods and getters. |
-| **At least one fixture** | **PASSED** | `fixtures/pages.fixture.ts` supplies all 6 page objects directly to tests. |
-| **No CSS classes / positional XPath** | **PASSED** | All locators rely on `data-test` test IDs or standard semantic roles. |
-| **Unique test data per run** | **PASSED** | `UserFactory` generates unique timestamp-suffixed emails and accounts. |
-| **Parallel & independent execution** | **PASSED** | All 7 tests pass concurrently (`fullyParallel: true`) in any execution order. |
+### Issue 1: Playwright couldn't find any test IDs
+* **Problem:** In Playwright, `page.getByTestId(...)` looks for the HTML attribute `data-testid` by default (with an "i"). But this website uses `data-test` (without an "i"). Because of this, none of the selectors worked and all tests timed out.
+* **My fix:** I opened `playwright.config.ts` and added:
+  ```ts
+  use: {
+    testIdAttribute: 'data-test',
+  }
+  ```
+  After adding this line, all `page.getByTestId(...)` calls started finding elements properly.
 
 ---
 
-## 4. Conclusion
+### Issue 2: Registration failed with "Password appeared in a data leak"
+* **Problem:** The AI generated a user factory with passwords like `Password123!` and `welcome01`. When `register.spec.ts` submitted the form, the API returned an HTTP 422 error:
+  > *"The given password has appeared in a data leak. Please choose a different password."*  
+  It turns out the site checks passwords against a compromised password database (HaveIBeenPwned).
+* **My fix:** I updated `data/user.factory.ts` to generate a strong, unique password (`KBTU_Masters_2026_SecPass#`). Once I changed that, registration passed and redirected to `/auth/login`.
 
-The combination of AI-assisted scaffolding and rigorous human QA review produced an enterprise-grade automated test suite that executes 7 test scenarios in under 17 seconds, with 100% green pass rate and zero flakiness.
+---
+
+### Issue 3: Missing `house_number` broke Registration and Checkout
+* **Problem:** 
+  1. During registration, the form would not submit and showed: *"House number is required"*.
+  2. During checkout (Step 3: Billing Address), the `Proceed to checkout` button (`data-test="proceed-3"`) stayed disabled, and Playwright failed with a timeout trying to click a disabled button.
+* **Why it happened:** The AI generated standard address fields (`street`, `city`, `state`, `country`, `postal_code`), but a recent sprint on the site added a mandatory `house_number` input (`data-test="house_number"`).
+* **My fix:** I added `houseNumberInput` to `pages/register.page.ts` and `pages/checkout.page.ts`. In `checkout.page.ts`, I wrote a check: if `house_number` is visible and empty, fill it with `'10'`. That immediately enabled the proceed button.
+
+---
+
+### Issue 4: The shared test account was locked (HTTP 423)
+* **Problem:** The slides suggested using `customer@practicesoftwaretesting.com` / `welcome01`. When I ran my login test, it failed because the backend responded with HTTP 423 (Account Locked). Other students were probably running automated tests at the same time and hit the failed attempt limit.
+* **My fix:** Instead of relying on a shared account that can get locked by anyone at any moment, I added a helper method to `user.factory.ts`:
+  ```ts
+  static async createRegisteredUserViaApi(request: APIRequestContext)
+  ```
+  Before running the login test or checkout test, it sends a quick `POST` request to `/users/register` to create a fresh, unique user in ~100 ms. Then the UI test logs in with those credentials. This made my tests 100% reliable and independent.
+
+---
+
+### Issue 5: The first product in the catalog was "Out of stock"
+* **Problem:** In `buy-product.spec.ts`, the AI initially clicked the first product card on the homepage. That product happened to be "Combination Pliers", which was out of stock. On out-of-stock items, the site hides the `Add to cart` button, so the test timed out.
+* **My fix:** I updated `product.page.ts` with a method called `selectFirstInStockProduct()`. It loops through the catalog cards, checks if a card has `data-test="out-of-stock"`, and clicks the first item that is actually available to buy.
+
+---
+
+### Issue 6: Angular SPA route changes vs full page reloads
+* **Problem:** The AI used `await page.waitForURL('**/account')` after logging in. In Playwright, `waitForURL` by default waits for a full browser `load` event. But because this site is built with Angular, page navigation happens via client-side routing (`pushState`) without reloading the HTML. The test hung waiting for a load event that never came.
+* **My fix:** I replaced it with Playwright's web-first assertion:
+  ```ts
+  await expect(page).toHaveURL(/.*account/);
+  ```
+  This is also what was shown on Slide 22 in class. It polls the URL asynchronously and passes as soon as Angular updates the route.
+
+---
+
+## 3. What I Learned from This
+
+Using AI was really helpful to generate the initial folder structure and boilerplate Page Object classes quickly. But **you cannot just copy-paste AI code and expect it to work**.
+
+Real web applications have dynamic behaviors that static AI prompts cannot predict:
+1. Dynamic backend validation (like password leak checks and account lockouts).
+2. Changing UI schemas (new required fields like `house_number` added in recent sprints).
+3. Dynamic inventory states (items going out of stock).
+4. Single-page application routing that requires web-first assertions instead of traditional page-load waits.
+
+Debugging these issues with DevTools and Playwright trace viewer was the most valuable part of this assignment. In the end, all 7 tests pass green in under 20 seconds.
