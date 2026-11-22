@@ -20,7 +20,13 @@ export class ProductPage extends BasePage {
   }
 
   async openCatalog() {
-    await this.navigateTo('/');
+    const navHome = this.page.getByTestId('nav-home');
+    if (await navHome.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await navHome.click();
+    } else {
+      await this.navigateTo('/');
+    }
+    await this.bypassCloudflareChallengeIfPresent();
     await this.page.waitForSelector('[data-test="product-name"]');
   }
 

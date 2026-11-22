@@ -112,6 +112,12 @@ The AI suggested:
 * **Problem:** In `.github/workflows/playwright.yml`, the environment variable was passed as `BASE_URL: ${{ vars.BASE_URL }}`. In `playwright.config.ts`, the fallback was written using the nullish coalescing operator: `process.env.BASE_URL ?? 'https://practicesoftwaretesting.com'`. Because `vars.BASE_URL` was not configured in GitHub repository variables, GitHub Actions injected an empty string `""`. In JavaScript, `""` is not `null` or `undefined`, so `baseURL` was assigned `""`! This caused all 4 shards in GitHub Actions to immediately crash with: `Protocol error (Page.navigate): Cannot navigate to invalid URL`.
 * **My fix:** I changed the fallback in `playwright.config.ts` from `??` to the logical OR operator `||` (`process.env.BASE_URL || 'https://practicesoftwaretesting.com'`) and added `${{ vars.BASE_URL || 'https://practicesoftwaretesting.com' }}` in the workflow YAML. Once pushed, the URL resolves to the live site by default.
 
+#### Issue 11: Cloudflare challenge on full page reload vs SPA navigation
+* **Problem:** In `buy-product.spec.ts`, immediately after authenticating, the test previously called `navigateTo('/')` (a full browser `page.goto('/')`). From GitHub Actions runner IPs (datacenter ranges), an abrupt full-page HTTP document request right after a login POST triggered Cloudflare's Turnstile challenge ("Verify you are human"), causing the test to hang on the challenge screen.
+* **My fix:** 
+  1. Updated `ProductPage.openCatalog()`: instead of forcing a full page reload, it clicks `data-test="nav-home"` in the navigation bar. In Angular SPA, this triggers internal client-side routing without making a new HTML document request to Cloudflare.
+  2. Added `bypassCloudflareChallengeIfPresent()` in `BasePage`: if a Cloudflare Turnstile iframe or checkbox is detected, Playwright automatically interacts with it to resolve the challenge.
+
 ---
 
 ## 3. Summary of Learnings
