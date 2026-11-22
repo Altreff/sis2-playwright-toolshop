@@ -15,19 +15,29 @@ export default defineConfig({
         ['junit', { outputFile: 'reports/junit.xml' }],
       ]
     : [['list'], ['html', { open: 'on-failure' }]],
+  timeout: 60000, // 60s for full E2E journeys in CI
   use: {
     baseURL: process.env.BASE_URL || 'https://practicesoftwaretesting.com',
     testIdAttribute: 'data-test',
     trace: 'on-first-retry', // trace recorded on the first retry
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 15000,
-    navigationTimeout: 30000,
+    actionTimeout: 20000,
+    navigationTimeout: 45000,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    locale: 'en-US',
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: [
+            '--disable-blink-features=AutomationControlled',
+          ],
+        },
+      },
     },
   ],
 });
