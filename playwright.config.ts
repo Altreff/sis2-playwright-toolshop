@@ -7,7 +7,11 @@ export default defineConfig({
   fullyParallel: true, // shards split tests, not whole files
   forbidOnly: isCI, // a forgotten test.only fails CI
   retries: isCI ? 2 : 0, // a flaky test is marked flaky, not red
-  workers: isCI ? 2 : undefined, // GitHub runners have 2-4 vCPUs
+  workers: isCI ? 1 : undefined, // 1 worker per shard in CI to prevent Cloudflare concurrent rate-limits
+  timeout: 60000, // 60s for full E2E journeys in CI
+  expect: {
+    timeout: 15000,
+  },
   reporter: isCI
     ? [
         ['list'],

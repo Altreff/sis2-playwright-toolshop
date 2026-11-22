@@ -13,7 +13,7 @@ test.describe('E-Commerce Purchasing Suite', () => {
     const user = await UserFactory.createRegisteredUserViaApi(page.request);
     await loginPage.open();
     await loginPage.signIn(user);
-    await expect(page).toHaveURL(/.*account/);
+    await expect(page).toHaveURL(/.*account/, { timeout: 30000 });
 
     // 2. Select in-stock product and add to cart
     const selectedProductName = await productPage.selectFirstInStockProduct();
