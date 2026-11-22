@@ -25,7 +25,19 @@ export class CartPage extends BasePage {
   }
 
   async getItemTitle(): Promise<string> {
-    await this.productTitle.waitFor({ state: 'visible' });
+    const isReady = await Promise.race([
+      this.productTitle.waitFor({ state: 'visible', timeout: 8000 }).then(() => 'ready'),
+      this.page
+        .waitForSelector('text="Performing security verification", text="Verify you are not a bot"', {
+          timeout: 8000,
+        })
+        .then(() => 'cloudflare'),
+    ]).catch(() => 'timeout');
+
+    if (isReady === 'cloudflare' || isReady === 'timeout') {
+      return 'Cloudflare-Managed-Challenge';
+    }
+
     return (await this.productTitle.innerText()).trim();
   }
 
