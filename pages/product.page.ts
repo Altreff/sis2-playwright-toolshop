@@ -20,14 +20,17 @@ export class ProductPage extends BasePage {
   }
 
   async openCatalog() {
-    const navHome = this.page.getByTestId('nav-home');
-    if (await navHome.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await navHome.click();
-    } else {
+    const currentUrl = this.page.url();
+    if (currentUrl === 'about:blank' || !currentUrl.includes('practicesoftwaretesting')) {
       await this.navigateTo('/');
+    } else {
+      // In-app transition: click Home in navbar to avoid full page reload
+      const navHome = this.page.getByTestId('nav-home');
+      await navHome.waitFor({ state: 'visible', timeout: 15000 });
+      await navHome.click();
     }
     await this.bypassCloudflareChallengeIfPresent();
-    await this.page.waitForSelector('[data-test="product-name"]');
+    await this.page.waitForSelector('[data-test="product-name"]', { timeout: 30000 });
   }
 
   async openProductByIndex(index: number): Promise<{ name: string; price: number }> {
