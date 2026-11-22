@@ -29,6 +29,12 @@ export class LoginPage extends BasePage {
     await this.passwordInput.fill(credentials.password);
     await this.submitButton.click();
     await this.bypassCloudflareChallengeIfPresent();
+    // Wait for either the authenticated account page or the error banner to appear
+    await this.page
+      .waitForSelector('[data-test="page-title"], [data-test="nav-home"], [data-test="login-error"]', {
+        timeout: 30000,
+      })
+      .catch(() => {});
   }
 
   async getErrorMessageText(): Promise<string> {
