@@ -118,6 +118,10 @@ The AI suggested:
   1. Updated `ProductPage.openCatalog()`: instead of forcing a full page reload, it clicks `data-test="nav-home"` in the navigation bar. In Angular SPA, this triggers internal client-side routing without making a new HTML document request to Cloudflare.
   2. Added `bypassCloudflareChallengeIfPresent()` in `BasePage`: if a Cloudflare Turnstile iframe or checkbox is detected, Playwright automatically interacts with it to resolve the challenge.
 
+#### Issue 12: Checkout Sign-In Funnel Architecture
+* **Problem:** In `buy-product.spec.ts`, pre-authenticating on `/auth/login` and attempting to redirect back to `/` from cloud CI IPs triggered Cloudflare's brute-force protection WAF on `/auth/login`.
+* **My fix:** Refactored `buy-product.spec.ts` to follow the standard e-commerce purchasing funnel: the user browses the catalog, adds the product to cart, reviews the cart, and authenticates directly on Step 2 of the multi-step checkout wizard (`confirmSignInStep(user)`). This eliminated the artificial pre-login redirect, mirror-matched real human customer behavior, and bypassed Cloudflare's `/auth/login` firewall challenge completely.
+
 ---
 
 ## 3. Summary of Learnings

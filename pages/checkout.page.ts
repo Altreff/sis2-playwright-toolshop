@@ -31,10 +31,18 @@ export class CheckoutPage extends BasePage {
     this.successMessage = page.locator('.alert-success, #order-confirmation, [data-test="payment-successful"]');
   }
 
-  async confirmSignInStep() {
-    if (await this.proceed2Button.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await this.proceed2Button.click();
+  async confirmSignInStep(user?: { email: string; password: string }) {
+    if (user) {
+      const emailField = this.page.locator('[data-test="email"], input[placeholder*="email" i], input[type="email"]');
+      await emailField.first().waitFor({ state: 'visible', timeout: 10000 });
+      await emailField.first().fill(user.email);
+      await this.page.locator('[data-test="password"], input[type="password"]').first().fill(user.password);
+      await this.page.locator('button:has-text("Login"), [data-test="login-submit"]').first().click();
+      await this.page.waitForTimeout(1000);
     }
+
+    await this.proceed2Button.waitFor({ state: 'visible', timeout: 10000 });
+    await this.proceed2Button.click();
   }
 
   async fillAddressIfRequired() {
