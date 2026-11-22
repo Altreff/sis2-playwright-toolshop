@@ -108,6 +108,10 @@ The AI suggested:
 * **My engineering review:** When I analyzed the actual numbers, I noticed that for 7 fast tests (~18 seconds total), each shard runner spends ~50 seconds booting Ubuntu, running `npm ci`, and checking Chromium dependencies. Splitting 18 seconds across 4 runners reduces execution time to 8 seconds per shard, but adding runner startup + the extra `merge-reports` container means total wall-clock time is roughly the same (~1m 40s).
 * **Takeaway:** Sharding has a fixed overhead per worker. It doesn't magically cut small suites to zero, but it is essential once a test suite grows to dozens or hundreds of tests taking 15+ minutes. I made sure to explain this honestly in the README runtime section.
 
+#### Issue 10: `vars.BASE_URL` in GitHub Actions and JavaScript `??` operator
+* **Problem:** In `.github/workflows/playwright.yml`, the environment variable was passed as `BASE_URL: ${{ vars.BASE_URL }}`. In `playwright.config.ts`, the fallback was written using the nullish coalescing operator: `process.env.BASE_URL ?? 'https://practicesoftwaretesting.com'`. Because `vars.BASE_URL` was not configured in GitHub repository variables, GitHub Actions injected an empty string `""`. In JavaScript, `""` is not `null` or `undefined`, so `baseURL` was assigned `""`! This caused all 4 shards in GitHub Actions to immediately crash with: `Protocol error (Page.navigate): Cannot navigate to invalid URL`.
+* **My fix:** I changed the fallback in `playwright.config.ts` from `??` to the logical OR operator `||` (`process.env.BASE_URL || 'https://practicesoftwaretesting.com'`) and added `${{ vars.BASE_URL || 'https://practicesoftwaretesting.com' }}` in the workflow YAML. Once pushed, the URL resolves to the live site by default.
+
 ---
 
 ## 3. Summary of Learnings

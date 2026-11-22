@@ -16,7 +16,7 @@ export default defineConfig({
       ]
     : [['list'], ['html', { open: 'on-failure' }]],
   use: {
-    baseURL: process.env.BASE_URL ?? 'https://practicesoftwaretesting.com',
+    baseURL: process.env.BASE_URL || 'https://practicesoftwaretesting.com',
     testIdAttribute: 'data-test',
     trace: 'on-first-retry', // trace recorded on the first retry
     screenshot: 'only-on-failure',
