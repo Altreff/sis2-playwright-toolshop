@@ -20,7 +20,7 @@ export abstract class BasePage {
       const checkbox = cfFrame.locator('input[type="checkbox"], #challenge-stage, .ctp-checkbox-label, #cf-stage');
       if (await checkbox.first().isVisible({ timeout: 2000 }).catch(() => false)) {
         await checkbox.first().click().catch(() => {});
-        await this.page.waitForTimeout(2000);
+        await this.page.waitForLoadState('domcontentloaded').catch(() => {});
       }
     } catch {
       // Cloudflare check absent, continue seamlessly

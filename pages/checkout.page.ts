@@ -38,7 +38,6 @@ export class CheckoutPage extends BasePage {
       await emailField.first().fill(user.email);
       await this.page.locator('[data-test="password"], input[type="password"]').first().fill(user.password);
       await this.page.locator('button:has-text("Login"), [data-test="login-submit"]').first().click();
-      await this.page.waitForTimeout(1000);
     }
 
     await this.proceed2Button.waitFor({ state: 'visible', timeout: 10000 });

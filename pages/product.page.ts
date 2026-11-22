@@ -87,6 +87,7 @@ export class ProductPage extends BasePage {
   }
 
   async goToCart() {
-    await this.navigateTo('/checkout');
+    await this.navCartLink.waitFor({ state: 'visible', timeout: 10000 });
+    await this.navCartLink.click();
   }
 }

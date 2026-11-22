@@ -13,16 +13,14 @@ test.describe('E-Commerce Purchasing Suite', () => {
     await productPage.addToCart();
 
     // 2. Assert that product is registered in shopping cart badge
-    const badge = page.getByTestId('cart-quantity');
-    await expect(badge).toHaveText('1');
+    await expect(productPage.cartQuantityBadge).toHaveText('1');
 
-    // 3. Open Cart review page
+    // 3. Open Cart review page via SPA navbar link
     await productPage.goToCart();
 
     const cartTitle = await cartPage.getItemTitle();
     if (cartTitle.includes('Cloudflare')) {
       console.log('Notice: Cloudflare Managed Challenge active on Azure IP for /checkout. Cart addition verified via badge.');
-      expect(await badge.innerText()).toBe('1');
       return;
     }
 
