@@ -21,7 +21,7 @@ export class CheckoutPage extends BasePage {
     this.proceed2Button = page.getByTestId('proceed-2');
     this.proceed3Button = page.getByTestId('proceed-3');
     this.streetInput = page.getByTestId('street');
-    this.houseNumberInput = page.getByTestId('house_number');
+    this.houseNumberInput = page.locator('[data-test="house_number"], [placeholder*="42"]');
     this.cityInput = page.getByTestId('city');
     this.stateInput = page.getByTestId('state');
     this.countrySelect = page.getByTestId('country');
@@ -40,35 +40,24 @@ export class CheckoutPage extends BasePage {
   async fillAddressIfRequired() {
     await this.proceed3Button.waitFor({ state: 'visible', timeout: 10000 });
     
-    // Fill required address inputs if empty
-    if (await this.streetInput.isVisible().catch(() => false)) {
-      if (!(await this.streetInput.inputValue())) {
-        await this.streetInput.fill('Abay Ave');
-      }
-    }
-    if (await this.houseNumberInput.isVisible().catch(() => false)) {
-      if (!(await this.houseNumberInput.inputValue())) {
-        await this.houseNumberInput.fill('10');
-      }
-    }
-    if (await this.cityInput.isVisible().catch(() => false)) {
-      if (!(await this.cityInput.inputValue())) {
-        await this.cityInput.fill('Almaty');
-      }
-    }
-    if (await this.stateInput.isVisible().catch(() => false)) {
-      if (!(await this.stateInput.inputValue())) {
-        await this.stateInput.fill('Almaty');
-      }
-    }
-    if (await this.postalCodeInput.isVisible().catch(() => false)) {
-      if (!(await this.postalCodeInput.inputValue())) {
-        await this.postalCodeInput.fill('050000');
+    const fields = [
+      { locator: this.postalCodeInput, val: '050000' },
+      { locator: this.houseNumberInput, val: '10' },
+      { locator: this.streetInput, val: 'Abay Ave' },
+      { locator: this.cityInput, val: 'Almaty' },
+      { locator: this.stateInput, val: 'Almaty Region' },
+    ];
+
+    for (const f of fields) {
+      if (await f.locator.isVisible({ timeout: 1000 }).catch(() => false)) {
+        const current = await f.locator.inputValue().catch(() => '');
+        if (!current) {
+          await f.locator.fill(f.val);
+        }
       }
     }
 
-    // Wait until proceed-3 becomes enabled
-    await this.proceed3Button.waitFor({ state: 'visible' });
+    // Click proceed-3 once enabled
     await this.proceed3Button.click();
   }
 

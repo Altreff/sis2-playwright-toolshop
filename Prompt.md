@@ -1,12 +1,14 @@
 # My AI Prompts Log (Prompt.md)
 
-**Student Assignment:** SIS 2 — Test Automation with Playwright  
+**Student Assignment:** SIS 2 & SIS 3 — Playwright Automation Suite & CI Pipeline  
 **Course:** Software Testing and Debugging · KBTU 2026  
 **AI Tool Used:** Gemini 3.8 Flash  
 
-Here are the actual prompts I used while working on this assignment. I used AI as an assistant to help scaffold the Page Objects and test structure, and then iterated on specific problems I ran into while testing the site.
+Here are the actual prompts I used while working on this assignment. I used Gemini 3.8 Flash as an assistant to help scaffold the Page Objects, test structure, and later the GitHub Actions CI pipeline, and then iterated on specific problems I ran into.
 
 ---
+
+## Part 1: SIS 2 (Playwright Suite & Page Objects)
 
 ### Prompt 1: Initial Suite & Page Object Scaffolding
 
@@ -52,3 +54,44 @@ Here are the actual prompts I used while working on this assignment. I used AI a
 > "In `buy-product.spec.ts`, my test tried to click the first product on the home page, but that product was 'Combination Pliers' which is currently marked 'Out of stock'. When a product is out of stock, there is no 'Add to cart' button, so the test fails.  
 > 
 > How can I update `product.page.ts` so it dynamically finds the first product card that does NOT have the `out-of-stock` badge and clicks that one instead?"
+
+---
+
+## Part 2: SIS 3 (GitHub Actions CI Pipeline & Sharding)
+
+### Prompt 5: Scaffolding GitHub Actions Workflow with Shards & Merging
+
+> "I need to build a CI pipeline for my Playwright test suite in GitHub Actions for SIS 3 (Software Testing Week 10).
+> 
+> Requirements from the assignment guide:
+> 1. Run on every push, pull request, and allow manual trigger (`workflow_dispatch`).
+> 2. Cancel in-progress runs when a new commit is pushed.
+> 3. Use Node.js 22 with npm cache enabled.
+> 4. Split tests across 4 parallel shards using a matrix strategy (`shardIndex: [1, 2, 3, 4]`).
+> 5. Upload blob reports from each shard so a second job `merge-reports` can download them and merge them into one HTML report and merged JUnit XML.
+> 6. Save traces, videos, and JUnit for 14 days.
+> 
+> Can you show me the YAML structure for `.github/workflows/playwright.yml` and the required `merge.config.ts`?"
+
+---
+
+### Prompt 6: Configuring `playwright.config.ts` for CI
+
+> "How should I update `playwright.config.ts` so that it behaves normally on my local computer, but switches to CI mode when running in GitHub Actions (`process.env.CI` is set)?
+> 
+> In CI mode, I need:
+> - `forbidOnly` to be true so nobody accidentally commits `test.only`.
+> - 2 retries in CI, but 0 locally.
+> - Workers set to 2 in CI.
+> - Reporters to include `list`, `blob` (for merging shards), and `junit` saving to `reports/junit.xml`.
+> - Keep `trace: 'on-first-retry'` and `screenshot: 'only-on-failure'`.
+> 
+> How do I write this cleanly in TypeScript?"
+
+---
+
+### Prompt 7: Testing CI Configuration and Report Merging Locally
+
+> "Before pushing to GitHub, I want to test the sharding and report merge commands locally on Windows PowerShell to make sure my `merge.config.ts` and `playwright.config.ts` work without syntax errors.
+> 
+> What PowerShell commands do I run to simulate running two shards, collecting the `.zip` blobs, and running `npx playwright merge-reports`?"

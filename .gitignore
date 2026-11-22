@@ -2,5 +2,9 @@ node_modules/
 test-results/
 playwright-report/
 blob-report/
+all-blob-reports/
+reports/
+.act-artifacts/
+.secrets
 playwright/.cache/
 .DS_Store

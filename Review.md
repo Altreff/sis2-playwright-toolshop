@@ -1,13 +1,15 @@
 # My Review and Notes on AI Output (Review.md)
 
 **Student:** Master's Student (Software Testing and Debugging)  
-**Task:** SIS 2 — Test Automation with Playwright  
+**Task:** SIS 2 & SIS 3 — Test Automation with Playwright & CI Pipeline  
 **AI Tool Evaluated:** Gemini 3.8 Flash  
 **Course Policy:** Level 1 (AI usage disclosed with review and modifications)  
 
 ---
 
-## 1. What the AI Gave Me Initially
+## Part 1: SIS 2 (Playwright Suite & Page Objects)
+
+### 1. What the AI Gave Me Initially
 
 When I first asked Gemini 3.8 Flash to generate the project, the structure looked good on paper:
 * It created the standard folders: `pages/`, `tests/`, `fixtures/`, and `data/`.
@@ -20,9 +22,9 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-## 2. Issues I Found and How I Fixed Them
+### 2. Issues I Found and How I Fixed Them
 
-### Issue 1: Playwright couldn't find any test IDs
+#### Issue 1: Playwright couldn't find any test IDs
 * **Problem:** In Playwright, `page.getByTestId(...)` looks for the HTML attribute `data-testid` by default (with an "i"). But this website uses `data-test` (without an "i"). Because of this, none of the selectors worked and all tests timed out.
 * **My fix:** I opened `playwright.config.ts` and added:
   ```ts
@@ -34,7 +36,7 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-### Issue 2: Registration failed with "Password appeared in a data leak"
+#### Issue 2: Registration failed with "Password appeared in a data leak"
 * **Problem:** The AI generated a user factory with passwords like `Password123!` and `welcome01`. When `register.spec.ts` submitted the form, the API returned an HTTP 422 error:
   > *"The given password has appeared in a data leak. Please choose a different password."*  
   It turns out the site checks passwords against a compromised password database (HaveIBeenPwned).
@@ -42,7 +44,7 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-### Issue 3: Missing `house_number` broke Registration and Checkout
+#### Issue 3: Missing `house_number` broke Registration and Checkout
 * **Problem:** 
   1. During registration, the form would not submit and showed: *"House number is required"*.
   2. During checkout (Step 3: Billing Address), the `Proceed to checkout` button (`data-test="proceed-3"`) stayed disabled, and Playwright failed with a timeout trying to click a disabled button.
@@ -51,7 +53,7 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-### Issue 4: The shared test account was locked (HTTP 423)
+#### Issue 4: The shared test account was locked (HTTP 423)
 * **Problem:** The slides suggested using `customer@practicesoftwaretesting.com` / `welcome01`. When I ran my login test, it failed because the backend responded with HTTP 423 (Account Locked). Other students were probably running automated tests at the same time and hit the failed attempt limit.
 * **My fix:** Instead of relying on a shared account that can get locked by anyone at any moment, I added a helper method to `user.factory.ts`:
   ```ts
@@ -61,13 +63,13 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-### Issue 5: The first product in the catalog was "Out of stock"
+#### Issue 5: The first product in the catalog was "Out of stock"
 * **Problem:** In `buy-product.spec.ts`, the AI initially clicked the first product card on the homepage. That product happened to be "Combination Pliers", which was out of stock. On out-of-stock items, the site hides the `Add to cart` button, so the test timed out.
 * **My fix:** I updated `product.page.ts` with a method called `selectFirstInStockProduct()`. It loops through the catalog cards, checks if a card has `data-test="out-of-stock"`, and clicks the first item that is actually available to buy.
 
 ---
 
-### Issue 6: Angular SPA route changes vs full page reloads
+#### Issue 6: Angular SPA route changes vs full page reloads
 * **Problem:** The AI used `await page.waitForURL('**/account')` after logging in. In Playwright, `waitForURL` by default waits for a full browser `load` event. But because this site is built with Angular, page navigation happens via client-side routing (`pushState`) without reloading the HTML. The test hung waiting for a load event that never came.
 * **My fix:** I replaced it with Playwright's web-first assertion:
   ```ts
@@ -77,14 +79,39 @@ Here is what went wrong and how I fixed it.
 
 ---
 
-## 3. What I Learned from This
+## Part 2: SIS 3 (CI Pipeline & GitHub Actions)
 
-Using AI was really helpful to generate the initial folder structure and boilerplate Page Object classes quickly. But **you cannot just copy-paste AI code and expect it to work**.
+### 1. What the AI Suggested for CI
+For Week 10 (SIS 3), I asked Gemini 3.8 Flash to help me configure GitHub Actions with sharding and report merging.
+The AI suggested:
+* A matrix configuration in `.github/workflows/playwright.yml` with 4 shards.
+* Adding `merge.config.ts` for report merging.
+* Setting `forbidOnly`, `retries: 2`, and `workers: 2` in `playwright.config.ts`.
 
-Real web applications have dynamic behaviors that static AI prompts cannot predict:
-1. Dynamic backend validation (like password leak checks and account lockouts).
-2. Changing UI schemas (new required fields like `house_number` added in recent sprints).
-3. Dynamic inventory states (items going out of stock).
-4. Single-page application routing that requires web-first assertions instead of traditional page-load waits.
+### 2. Issues and Adjustments in CI Setup
 
-Debugging these issues with DevTools and Playwright trace viewer was the most valuable part of this assignment. In the end, all 7 tests pass green in under 20 seconds.
+#### Issue 7: `actions/upload-artifact@v4` and download pattern changes
+* **Problem:** Older GitHub Actions tutorials and early AI snippets use `actions/upload-artifact@v3` and `download-artifact@v3`. In v4 of these actions, artifact behavior changed completely: you cannot upload multiple times to the same artifact name, and downloading multiple artifacts requires `pattern: blob-report-*` and `merge-multiple: true`.
+* **My fix:** I verified that the workflow uses `@v4` explicitly, names each blob artifact uniquely per shard (`blob-report-${{ matrix.shardIndex }}`), and sets `pattern: blob-report-*` with `merge-multiple: true` in the `merge-reports` job.
+
+#### Issue 8: Local sharding test on Windows PowerShell
+* **Problem:** The tutorial in the guide used Linux bash commands like `mkdir -p all-blob-reports` and `cp blob-report/*.zip all-blob-reports/`. On Windows PowerShell, `mkdir -p` and `cp` with wildcards sometimes behave differently or conflict if folders already exist.
+* **My fix:** I tested the commands in PowerShell using native commands:
+  ```powershell
+  New-Item -ItemType Directory -Force -Path all-blob-reports
+  Copy-Item blob-report/*.zip all-blob-reports/report-1.zip
+  ```
+  This validated that shard 1 (4 tests) and shard 2 (3 tests) could be merged locally into `reports/junit-merged.xml` and HTML report before touching GitHub.
+
+#### Issue 9: Realistic Understanding of Sharding vs Setup Overhead
+* **Observation:** The AI initially claimed that 4 shards would make the pipeline 4 times faster.
+* **My engineering review:** When I analyzed the actual numbers, I noticed that for 7 fast tests (~18 seconds total), each shard runner spends ~50 seconds booting Ubuntu, running `npm ci`, and checking Chromium dependencies. Splitting 18 seconds across 4 runners reduces execution time to 8 seconds per shard, but adding runner startup + the extra `merge-reports` container means total wall-clock time is roughly the same (~1m 40s).
+* **Takeaway:** Sharding has a fixed overhead per worker. It doesn't magically cut small suites to zero, but it is essential once a test suite grows to dozens or hundreds of tests taking 15+ minutes. I made sure to explain this honestly in the README runtime section.
+
+---
+
+## 3. Summary of Learnings
+
+1. **AI as an accelerator:** Gemini 3.8 Flash saved substantial time generating YAML syntax and configuration templates.
+2. **Human oversight is mandatory:** Real-world testing requires understanding the actual runtime environment, API nuances, site layout shifts, and the trade-offs between parallelism and setup latency in CI pipelines.
+3. **Reproducibility:** Testing the exact CI steps locally (`CI=true`, local report merging) gave complete confidence before pushing to GitHub.
